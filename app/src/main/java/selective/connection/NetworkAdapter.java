@@ -5,6 +5,7 @@ import android.util.Log;
 
 import java.nio.ByteBuffer;
 
+import static java.sql.Types.NULL;
 import static selective.connection.SegmentManager.kSegHeaderSize;
 import static selective.connection.SegmentManager.kSegRecv;
 import static selective.connection.SegmentManager.kSegSend;
@@ -42,17 +43,17 @@ public abstract class NetworkAdapter {
 
             while (true) {
                 Segment to_send = sm.dequeue(kSegSend);
-
-                int len = kSegSize + kSegHeaderSize;
-                byte[] data = to_send.data;
-                int res = send(data, len);
-                if (res < len) {
-                    sm.enqueue(kSegSend, to_send);
-                    if (res <= 0)
-                        break;
+                if(to_send != null){
+                    int len = kSegSize + kSegHeaderSize;
+                    byte[] data = to_send.data;
+                    int res = send(data, len);
+                    if (res < len) {
+                        sm.enqueue(kSegSend, to_send);
+                        if (res <= 0)
+                            break;
+                    }
+                    sm.free_segment(to_send);
                 }
-
-                sm.free_segment(to_send);
             }
         }
     }
@@ -70,9 +71,12 @@ public abstract class NetworkAdapter {
                     Log.d(tag, "Recving failed");
                     sm.free_segment(free_seg);
 
-                    if (res <= 0)
+                    if (res <= 0) {
                         break;
-                } else Log.d(tag, "Recved : " + Integer.toString(dev_id));
+                    }
+                } else {
+                    Log.d(tag, "Recved : " + Integer.toString(dev_id));
+                }
 
                 ByteBuffer buffer = ByteBuffer.allocate(2);
                 buffer.put(free_seg.data, 0, 2);
@@ -135,14 +139,33 @@ public abstract class NetworkAdapter {
     }
 
     private class ClosingThread extends Thread {
+        Handler mHandler;
+
+        ClosingThread(Handler handler) {
+            mHandler = handler;
+        }
+
         public void run() {
             if (stat != kDevDisconnecting)
                 return;
+
+            if(send_thread != null){
+                send_thread.interrupt();
+                send_thread = null;
+                Log.d(tag, "sender thread stopped ");
+            }
+            if(recv_thread != null){
+                recv_thread.interrupt();
+                recv_thread = null;
+                Log.d(tag, "recver thread stopped ");
+            }
 
             boolean res = close_connection();
 
             if (res) stat = kDevDiscon;
             else stat = kDevCon;
+
+            mHandler.sendEmptyMessage(stat);
         }
     }
 
@@ -228,7 +251,7 @@ public abstract class NetworkAdapter {
             close_thread.interrupt();
         }
 
-        close_thread = new ClosingThread();
+        close_thread = new ClosingThread(handler);
         close_thread.start();
     }
 

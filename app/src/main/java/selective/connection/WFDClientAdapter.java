@@ -354,7 +354,8 @@ public class WFDClientAdapter extends NetworkAdapter {
                     //Log.d(tag, "Connected:" + dev_addr);
                     WifiP2pGroup p2pGroup = (WifiP2pGroup) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_GROUP);
                     if (p2pGroup.getOwner().deviceAddress != null && p2pGroup.getOwner().deviceAddress.equals(dev_addr)) {
-                        Log.d(tag, "Connected:" + dev_addr);
+                        Log.d(tag, "Con" +
+                                "nected:" + dev_addr);
                     }
                     synchronized(connected_trigger) {
                         connected_notified = true;

@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
+import static selective.connection.NetworkAdapter.kDevCon;
 import static selective.connection.NetworkAdapter.kDevDiscon;
 import static selective.connection.NetworkAdapter.kDevDisconnecting;
 
@@ -547,6 +548,33 @@ class NetworkManager {
                     NetworkManager.get_instance().state = kNetStatIncr;
                     data_na.connect(mDataConnectingHandler);
                 } else if (ctrl_req == kCtrlReqDecr) {
+                    Log.d(tag, "DataDecr request arrived");
+                    if (na.recv(data, 2) <= 0) {
+                        Log.d(tag, "Control adapter might be closed");
+                        break;
+                    }
+
+                    buffer = ByteBuffer.allocate(2);
+                    buffer.put(data, 0, 2);
+
+                    short dev_id = buffer.getShort(0);
+                    Log.d(tag, "Device ID = " + Short.toString(dev_id));
+
+                    NetworkAdapter data_na = null;
+
+                    ListIterator<NetworkAdapter> it = adapter_list[kNetData].listIterator();
+                    while (it.hasNext()) {
+                        NetworkAdapter walker = it.next();
+                        if (walker.dev_id == dev_id) {
+                            data_na = walker;
+                            break;
+                        }
+                    }
+                    if (data_na == null) throw new AssertionError();
+
+                    NetworkManager.get_instance().prev_state = NetworkManager.get_instance().state;
+                    NetworkManager.get_instance().state = kNetStatDecr;
+                    data_na.close(mDataDisconnectingHandler);
 
                 } else if (ctrl_req == kCtrlReqPriv) {
                     short dev_id;
@@ -599,6 +627,7 @@ class NetworkManager {
     private int state;
     private int prev_state;
     private Handler mDataConnectingHandler;
+    private Handler mDataDisconnectingHandler;
     private Handler mCtrlHandler;
 
     LinkedList<NetworkAdapter> adapter_list[];
@@ -615,6 +644,7 @@ class NetworkManager {
 
         state = kNetStatDiscon;
         prev_state = kNetStatDiscon;
+
         mDataConnectingHandler = new Handler() {
             public void handleMessage(Message msg) {
                 NetworkManager nm = NetworkManager.get_instance();
@@ -625,6 +655,26 @@ class NetworkManager {
                     nm.state = kNetStatData;
                     connecting_adapter = null;
                     SegmentManager.get_instance().queue_threshold += SegmentManager.kSegThreshold;
+                } else {
+                    nm.state = nm.prev_state;
+                }
+            }
+        };
+
+        mDataDisconnectingHandler = new Handler() {
+            public void handleMessage(Message msg) {
+                NetworkManager nm = NetworkManager.get_instance();
+
+                if(nm.state != kNetStatDecr) throw new AssertionError();
+
+                if(msg.what == NetworkAdapter.kDevDiscon) {
+                    if(is_data_adapter_on()){
+                        nm.state = kNetStatData;
+                    } else {
+                        nm.state = kNetStatControl;
+                    }
+                    connecting_adapter = null;
+                    SegmentManager.get_instance().queue_threshold -= SegmentManager.kSegThreshold;
                 } else {
                     nm.state = nm.prev_state;
                 }
@@ -729,8 +779,71 @@ class NetworkManager {
     }
 
     public void decrease_adapter() {
-        Log.d(tag, "decrease_adapter()");
+        if (state == kNetStatIncr || state == kNetStatDecr) {
+            Log.d(tag, "Data ports are busy");
+            return;
+        }
 
+        if (state == kNetStatDiscon) {
+            Log.d(tag, "Control port is not opened yet");
+            return;
+        }
+        Log.d(tag, "decrease_adapter()");
+        prev_state = state;
+        state = kNetStatDecr;
+
+        NetworkAdapter na = select_device_on();
+        if (na == null) {
+            state = prev_state;
+            Log.d(tag, "All device has been down");
+            return;
+        }
+
+        byte[] buf = new byte[SegmentManager.kSegSize];
+        ByteBuffer buffer = ByteBuffer.allocate(2);
+
+        buffer.putShort(na.dev_id);
+        buf[0] = kCtrlReqDecr;
+        System.arraycopy(buffer.array(), 0, buf, 1, 2);
+
+        send_control_data(buf, 3);
+
+        connecting_adapter = na;
+        na.close(new Handler() {
+            public void handleMessage(Message msg) {
+                NetworkManager nm = NetworkManager.get_instance();
+
+                if (nm.state != kNetStatDecr) throw new AssertionError();
+
+                if (msg.what == NetworkAdapter.kDevDiscon) {
+                    if(is_data_adapter_on()){
+                        nm.state = kNetStatData;
+                    } else {
+                        nm.state = kNetStatControl;
+                    }
+                    connecting_adapter = null;
+                    SegmentManager.get_instance().queue_threshold -= SegmentManager.kSegThreshold;
+                } else {
+                    nm.state = nm.prev_state;
+                }
+            }
+        });
+
+
+
+
+
+    }
+
+    private boolean is_data_adapter_on() {
+        ListIterator<NetworkAdapter> iterator  = adapter_list[kNetData].listIterator();
+        while (iterator.hasNext()) {
+            NetworkAdapter walker = iterator.next();
+            if (walker.get_stat() == kDevCon) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void connect_control_adapter() {
@@ -804,6 +917,20 @@ class NetworkManager {
             NetworkAdapter walker = iterator.next();
 
             if (walker.get_stat() == kDevDiscon) {
+                res = walker;
+                break;
+            }
+        }
+        return res;
+    }
+
+    private NetworkAdapter select_device_on() {
+        NetworkAdapter res = null;
+        ListIterator<NetworkAdapter> iterator  = adapter_list[kNetData].listIterator();
+        while (iterator.hasNext()) {
+            NetworkAdapter walker = iterator.next();
+
+            if (walker.get_stat() == kDevCon) {
                 res = walker;
                 break;
             }

@@ -17,7 +17,12 @@ public class MainActivity extends AppCompatActivity {
     private Communicator cm;
     private BTClientAdapter ca;
     private BTClientAdapter na3;
+    private BTClientAdapter na31;
+    private BTClientAdapter na32;
+
     private TCPClientAdapter na;
+    private TCPClientAdapter na4;
+    private TCPClientAdapter na5;
     private WFDClientAdapter na2;
 
     @Override
@@ -30,14 +35,23 @@ public class MainActivity extends AppCompatActivity {
         cm = Communicator.get_instance();
 
         ca = new BTClientAdapter((short)1234, "B8:27:EB:37:0C:BD","150e8400-e29b-41d4-a716-446655440000");
-        na = new TCPClientAdapter((short)2345, "192.168.0.48", 2345);
-        na2 = new WFDClientAdapter((short)3456, 3456, this);
+        //na = new TCPClientAdapter((short)2345, "192.168.0.48", 2345);
+        //na4 = new TCPClientAdapter((short)5555,"192.168.0.48", 5555);
+        //na5 = new TCPClientAdapter((short)6666,"192.168.0.48", 6666);
+        //na2 = new WFDClientAdapter((short)3456, 3456, this);
         na3 = new BTClientAdapter((short)3333, "B8:27:EB:37:0C:BD", "150e8400-1234-41d4-a716-446655440000");
+        na31 = new BTClientAdapter((short)3334, "B8:27:EB:37:0C:BD", "6be60100-3629-11e7-a919-92ebcb67fe33");
+        na32 = new BTClientAdapter((short)3335, "B8:27:EB:37:0C:BD", "6be60470-3629-11e7-a919-92ebcb67fe33");
 
         ca.set_control_adapter();
         na3.set_data_adapter();
-        na.set_data_adapter();
-        na2.set_data_adapter();
+        na31.set_data_adapter();
+        na32.set_data_adapter();
+
+        //na.set_data_adapter();
+        //na4.set_data_adapter();
+        //na5.set_data_adapter();
+        //na2.set_data_adapter();
 
         new Thread() {
             private String tag = "Recved";
@@ -56,14 +70,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        na2.onResume(this);
+        //na2.onResume(this);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
 
-        na2.onPause(this);
+        //na2.onPause(this);
     }
 
     private void requestPermissions() {
