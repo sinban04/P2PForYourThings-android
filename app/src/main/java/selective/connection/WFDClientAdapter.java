@@ -131,7 +131,7 @@ public class WFDClientAdapter extends NetworkAdapter {
                 Log.d(tag, "Discover peers failed");
             }
         });
-
+        Log.d(tag, "hi1 " );
         try {
             if (!connected_notified) {
                 synchronized (connected_trigger) {
@@ -153,6 +153,7 @@ public class WFDClientAdapter extends NetworkAdapter {
 
         if (!res) return res;
 
+        Log.d(tag, "hi2 " );
         send_ctrl_msg(new String("Connected").getBytes(), 9);
 
         try {
@@ -171,11 +172,12 @@ public class WFDClientAdapter extends NetworkAdapter {
 
         if (!res) return res;
 
+        Log.d(tag, "hi3 " );
         try {
             if (sock != null)
                 sock.close();
 
-            //Log.d(tag, "Connect to " + ip);
+            Log.d(tag, "Connect to " + ip);
             sock = new Socket();
             sock.bind(null);
             sock.connect(new InetSocketAddress(ip, port), 2000);
@@ -296,6 +298,7 @@ public class WFDClientAdapter extends NetworkAdapter {
                         Log.d(tag, "dev addr is not set yet");
                         return;
                     }
+                    Log.d(tag, "find the peer and request WFD");
 
                     for (WifiP2pDevice device : peers.getDeviceList()) {
                         if(device.deviceAddress.equals(dev_addr)) {

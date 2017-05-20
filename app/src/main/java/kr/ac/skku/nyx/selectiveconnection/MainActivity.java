@@ -35,18 +35,18 @@ public class MainActivity extends AppCompatActivity {
         cm = Communicator.get_instance();
 
         ca = new BTClientAdapter((short)1234, "B8:27:EB:37:0C:BD","150e8400-e29b-41d4-a716-446655440000");
-        //na = new TCPClientAdapter((short)2345, "192.168.0.48", 2345);
-        //na4 = new TCPClientAdapter((short)5555,"192.168.0.48", 5555);
-        //na5 = new TCPClientAdapter((short)6666,"192.168.0.48", 6666);
-        //na2 = new WFDClientAdapter((short)3456, 3456, this);
+        na = new TCPClientAdapter((short)2345, "192.168.0.48", 2345);
+        na4 = new TCPClientAdapter((short)5555,"192.168.0.48", 5555);
+        na5 = new TCPClientAdapter((short)6666,"192.168.0.48", 6666);
+        na2 = new WFDClientAdapter((short)3456, 3456, this);
         na3 = new BTClientAdapter((short)3333, "B8:27:EB:37:0C:BD", "150e8400-1234-41d4-a716-446655440000");
         na31 = new BTClientAdapter((short)3334, "B8:27:EB:37:0C:BD", "6be60100-3629-11e7-a919-92ebcb67fe33");
         na32 = new BTClientAdapter((short)3335, "B8:27:EB:37:0C:BD", "6be60470-3629-11e7-a919-92ebcb67fe33");
 
         ca.set_control_adapter();
         na3.set_data_adapter();
-        na31.set_data_adapter();
-        na32.set_data_adapter();
+        //na31.set_data_adapter();
+        //na32.set_data_adapter();
 
         //na.set_data_adapter();
         //na4.set_data_adapter();
@@ -56,12 +56,19 @@ public class MainActivity extends AppCompatActivity {
         new Thread() {
             private String tag = "Recved";
             public void run() {
-                byte[] buf = new byte[8192];
+                // byte[] buf = new byte[8192];
+                byte[] buf = new byte[10*1024*1024];
+                String sending_buf = "hihihii";
 
                 while (true) {
-                    int res = cm.recv_data(buf, 8192);
+                    int res = cm.recv_data(buf, 10*1024*1024);
                     Log.d(tag, Integer.toString(res) + "data received");
+                    //int res2 = cm.send_data(sending_buf.getBytes(), 5);
+                    //Log.d(tag, Integer.toString(res2) + "data sent");
                 }
+
+
+
             }
         }.start();
     }
