@@ -73,6 +73,7 @@ public class WFDClientAdapter extends NetworkAdapter {
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+        ct.registerReceiver(bReceiver, intentFilter);
     }
 
     public void onResume(Context ct) {
@@ -123,7 +124,8 @@ public class WFDClientAdapter extends NetworkAdapter {
         mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                Log.d(tag, "Discover peers succedded");
+                Log.d(tag, "Discover peers succeeded");
+
             }
 
             @Override
@@ -275,7 +277,7 @@ public class WFDClientAdapter extends NetworkAdapter {
             }
         } else { //IP Addr
             ip = new String(Arrays.copyOfRange(buf, 0, len));
-            //Log.d(tag, ip);
+            Log.d(tag, ip);
 
             synchronized(ip_trigger) {
                 ip_trigger.notifyAll();
@@ -292,6 +294,7 @@ public class WFDClientAdapter extends NetworkAdapter {
             mPeerListListner = new WifiP2pManager.PeerListListener() {
                 @Override
                 public void onPeersAvailable(WifiP2pDeviceList peers) {
+                    Log.d(tag, "onPeersAvailable occurred!");
                     WifiP2pConfig config = new WifiP2pConfig();
 
                     if (dev_addr == null) {
@@ -321,7 +324,7 @@ public class WFDClientAdapter extends NetworkAdapter {
                                 mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
                                     @Override
                                     public void onSuccess() {
-                                        //Log.d(tag, "Manager tries to connect");
+                                        Log.d(tag, "Manager tries to connect");
                                     }
 
                                     @Override
@@ -339,20 +342,30 @@ public class WFDClientAdapter extends NetworkAdapter {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            Log.d(tag, "onReceive occurred!");
 
             if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
                 // Call WifiP2pManager.requestPeers() to get a list of current peers
+                Log.d(tag, "WIFI_P2P_PEERS_CHANGED_ACTION occurred");
                 if (mManager != null) {
                     mManager.requestPeers(mChannel, mPeerListListner);
                 }
             } else if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
                 int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
-                //Log.d(tag, "P2P state changed - " + state);
+                if(state == WifiP2pManager.WIFI_P2P_STATE_ENABLED)
+                {
+                    Log.d(tag, "Wifi P2P is enabled");
+                }
+                else
+                {
+                    Log.d(tag, "Wifi P2P is not enabled");
+                }
+                Log.d(tag, "P2P state changed - " + state);
 
             } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
                 // Respond to new connection or disconnections
                 NetworkInfo networkInfo = (NetworkInfo) intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
-                //Log.d(tag, "Connection changed - " + networkInfo.toString());
+                Log.d(tag, "Connection changed - " + networkInfo.toString());
                 if (networkInfo.isConnected()) {
                     //Log.d(tag, "Connected:" + dev_addr);
                     WifiP2pGroup p2pGroup = (WifiP2pGroup) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_GROUP);

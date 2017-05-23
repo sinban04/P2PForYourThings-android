@@ -51,23 +51,21 @@ public class MainActivity extends AppCompatActivity {
         //na.set_data_adapter();
         //na4.set_data_adapter();
         //na5.set_data_adapter();
-        //na2.set_data_adapter();
+        na2.set_data_adapter();
 
         new Thread() {
             private String tag = "Recved";
             public void run() {
                 // byte[] buf = new byte[8192];
-                byte[] buf = new byte[10*1024*1024];
+                byte[] buf = new byte[100*1024];
                 String sending_buf = "hihihii";
 
                 while (true) {
-                    int res = cm.recv_data(buf, 10*1024*1024);
+                    int res = cm.recv_data(buf, 100*1024);
                     Log.d(tag, Integer.toString(res) + "data received");
                     //int res2 = cm.send_data(sending_buf.getBytes(), 5);
                     //Log.d(tag, Integer.toString(res2) + "data sent");
                 }
-
-
 
             }
         }.start();
