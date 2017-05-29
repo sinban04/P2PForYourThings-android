@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
         //na31.set_data_adapter();
         //na32.set_data_adapter();
 
-        //na.set_data_adapter();
+        na.set_data_adapter();
         //na4.set_data_adapter();
         //na5.set_data_adapter();
         na2.set_data_adapter();

@@ -130,7 +130,6 @@ public class BTClientAdapter extends NetworkAdapter {
                     len = -1;
                     break;
                 }
-
                 read_bytes += bytes;
             }
             res = len;

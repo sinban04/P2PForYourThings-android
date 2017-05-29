@@ -75,17 +75,18 @@ public abstract class NetworkAdapter {
                         break;
                     }
                 } else {
-                    Log.d(tag, "Recved : " + Integer.toString(dev_id));
+                    Log.d(tag, "Recved : " + Short.toString(dev_id));
                 }
 
-                ByteBuffer buffer = ByteBuffer.allocate(2);
-                buffer.put(free_seg.data, 0, 2);
-                free_seg.seq_no = buffer.getShort(0);
+                ByteBuffer buffer = ByteBuffer.allocate(4);
+                buffer.put(free_seg.data, 0, 4);
+                free_seg.seq_no = buffer.getInt(0);
                 //Log.d(tag, "Recved Seq No : " + Integer.toString(free_seg.seq_no));
 
-                buffer = ByteBuffer.allocate(2);
-                buffer.put(free_seg.data, 2, 2);
-                free_seg.flag_len = buffer.getShort(0);
+                buffer = ByteBuffer.allocate(4);
+                buffer.put(free_seg.data, 4, 4);
+                free_seg.flag_len = buffer.getInt(0);
+                //Log.d(tag, "Recved flag_len: " + Integer.toString(free_seg.flag_len));
 
                 sm.enqueue(kSegRecv, free_seg);
                 free_seg = sm.get_free_segment();

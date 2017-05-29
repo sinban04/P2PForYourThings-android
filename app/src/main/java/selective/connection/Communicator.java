@@ -35,7 +35,7 @@ public class Communicator {
         ProtocolData pd = null;
         int packet_size;
 
-        pd = ProtocolManager.data_to_protocol_data(buf, (short)len);
+        pd = ProtocolManager.data_to_protocol_data(buf, len);
         if (pd == null) throw new AssertionError();
 
         packet_size = ProtocolManager.serialize(pd, buf, curr_offset, len);
@@ -60,7 +60,7 @@ public class Communicator {
 
 class ProtocolData {
     short id;
-    short len;
+    int len;
     byte[] data;
 
     ProtocolData() {
@@ -71,7 +71,7 @@ class ProtocolData {
 }
 
 class ProtocolManager {
-    static public final int kProtHeaderSize = 4;
+    static public final int kProtHeaderSize = 6;
 
     static private short packet_id;
     static private byte[] serialized_vector = null;
@@ -85,16 +85,16 @@ class ProtocolManager {
         buffer.putShort(pd.id);
         byte[] net_id = buffer.array();
 
-        buffer.putShort(pd.len);
+        buffer.putInt(pd.len);
         byte[] net_len = buffer.array();
 
         System.arraycopy(net_id, 0, vec_ptr, vec_offset, 2);
         vec_offset += 2;
 
-        System.arraycopy(net_len, 0, vec_ptr, vec_offset, 2);
+        System.arraycopy(net_len, 0, vec_ptr, vec_offset, 4);
     }
 
-    static public ProtocolData data_to_protocol_data(byte[] buf, short len) {
+    static public ProtocolData data_to_protocol_data(byte[] buf, int len) {
         ProtocolData pd = new ProtocolData();
 
         pd.id = packet_id++;
@@ -132,13 +132,13 @@ class ProtocolManager {
         buffer.put(serialized, vec_offset, 2);
         ret_pd.id = buffer.getShort(0);
         vec_offset += 2;
+        //Log.d(tag, "ret_pd.id is " + ret_pd.id);
 
-        buffer = ByteBuffer.allocate(2);
-        buffer.put(serialized, vec_offset, 2);
-        ret_pd.len = buffer.getShort(0);
-        vec_offset += 2;
-
-
+        buffer = ByteBuffer.allocate(4);
+        buffer.put(serialized, vec_offset, 4);
+        ret_pd.len = buffer.getInt(0);
+        vec_offset += 4;
+        //Log.d(tag, "ret_pd.len is " + ret_pd.len);
 
         return vec_offset;
     }
@@ -167,8 +167,8 @@ class ProtocolManager {
 }
 
 class Segment {
-    short seq_no;
-    short flag_len;
+    int seq_no;
+    int flag_len;
     byte[] data;
 
     Segment() {
@@ -186,12 +186,12 @@ class SegmentManager {
     static public final int kSegQueueThreshold = kSegThreshold / 512;
     static public final int kSegFreeThreshold = 256;
 
-    static public final int kSegHeaderSize = 4;
+    static public final int kSegHeaderSize = 8;
 
     static public final int kSegLenOffset = 0;
     static public final int kSegFlagOffset = 15;
-    static public final int kSegLenMask = 0x7fff;
-    static public final int kSegFlagMask = 0x8000;
+    static public final int kSegLenMask = 0x00007fff;
+    static public final int kSegFlagMask = 0x00008000;
 
     static public final int kSegSend = 0;
     static public final int kSegRecv = 1;
@@ -199,10 +199,10 @@ class SegmentManager {
 
     static public final short kSegFlagMF = 1;
 
-    private short seq_no;
+    private int seq_no;
     public int queue_threshold;
 
-    private short[] next_seq_no;
+    private int[] next_seq_no;
 
     private LinkedList<Segment>[] queue;
     private LinkedList<Segment> failed_queue;
@@ -214,19 +214,19 @@ class SegmentManager {
     private int free_list_size;
 
     // Macro
-    static public int mGetSegLenBits(short x) {
+    static public int mGetSegLenBits(int x) {
         return (x & kSegLenMask) >> kSegLenOffset;
     }
 
-    static public int mGetSegFlagBits(short x) {
+    static public int mGetSegFlagBits(int x) {
         return (x & kSegFlagMask) >> kSegFlagOffset;
     }
 
-    static public short mSetSegLenBits(short x, short dest) {
+    static public int mSetSegLenBits(int x, int dest) {
         return (dest |= (x << kSegLenOffset) & kSegLenMask);
     }
 
-    static public short mSetSegFlagBits(short x, short dest) {
+    static public int mSetSegFlagBits(int x, int dest) {
         return (dest |= (x << kSegFlagOffset) & kSegFlagMask);
     }
 
@@ -247,7 +247,7 @@ class SegmentManager {
             queue_size[i] = 0;
         }
 
-        next_seq_no = new short[kSegMaxQueueType];
+        next_seq_no = new int[kSegMaxQueueType];
         for (int i=0; i<kSegMaxQueueType; i++) {
             next_seq_no[i] = 0;
         }
@@ -263,8 +263,8 @@ class SegmentManager {
         return instance;
     }
 
-    short get_seq_no(short len) {
-        short ret = seq_no;
+    int get_seq_no(int len) {
+        int ret = seq_no;
         seq_no += len;
 
         return ret;
@@ -274,9 +274,9 @@ class SegmentManager {
         if (data == null || len <= 0) throw new AssertionError();
 
         int offset = 0;
-        short num_of_segments = (short) ((len + kSegSize - 1) / kSegSize);
+        int num_of_segments = (short) ((len + kSegSize - 1) / kSegSize);
 
-        short allocated_seq_no = get_seq_no(num_of_segments);
+        int allocated_seq_no = get_seq_no(num_of_segments);
         int seg_idx;
         for (seg_idx = 0; seg_idx < num_of_segments; seg_idx++) {
             short seg_len = (len - offset < kSegSize)? (short)(len - offset) : kSegSize;
@@ -301,10 +301,10 @@ class SegmentManager {
     private void serialize_segment_header(Segment seg) {
         ByteBuffer buffer = ByteBuffer.allocate(2);
 
-        buffer.putShort(seg.seq_no);
+        buffer.putInt(seg.seq_no);
         byte[] net_seq_no = buffer.array();
 
-        buffer.putShort(seg.flag_len);
+        buffer.putInt(seg.flag_len);
         byte[] net_flag_len = buffer.array();
 
         System.arraycopy(net_seq_no, 0, seg.data, 0, 2);
@@ -315,7 +315,7 @@ class SegmentManager {
         if (pd == null) throw new AssertionError();
 
         byte[] serialized = null;
-        short offset = 0;
+        int offset = 0;
         int data_size = 0;
         boolean cont = false;
 
@@ -323,8 +323,10 @@ class SegmentManager {
         ProtocolManager.parse_header(Arrays.copyOfRange(seg.data, kSegHeaderSize, seg.data.length), pd);
         if (pd.len == 0) return null;
 
+        Log.d(tag, "pd.len is " + pd.len);
         serialized = new byte[pd.len];
 
+        // Handle the first segment of the data bulk, because it contains protocol data
         data_size = mGetSegLenBits(seg.flag_len) - ProtocolManager.kProtHeaderSize;
         System.arraycopy(seg.data, kSegHeaderSize + ProtocolManager.kProtHeaderSize, serialized, offset, data_size);
         offset += data_size;
@@ -360,7 +362,7 @@ class SegmentManager {
                 segment_enqueued = true;
             } else {
                 if (seg.seq_no < next_seq_no[type]) {
-                    Log.d(tag, ((type==kSegSend)? "Sending Queue" : "Recving Queue") + Short.toString(seg.seq_no) + ":"+ Short.toString(next_seq_no[type]));
+                    Log.d(tag, ((type==kSegSend)? "Sending Queue" : "Recving Queue") + Integer.toString(seg.seq_no) + ":"+ Integer.toString(next_seq_no[type]));
                     throw new AssertionError();
                 }
 
