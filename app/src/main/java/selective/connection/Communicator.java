@@ -18,6 +18,7 @@ import static selective.connection.NetworkAdapter.kDevDisconnecting;
 
 public class Communicator {
     static private Communicator instance = null;
+    static String tag = "Comm";
     private Communicator() {
         SegmentManager sm = SegmentManager.get_instance();
         NetworkManager nm = NetworkManager.get_instance();
@@ -40,9 +41,11 @@ public class Communicator {
 
         packet_size = ProtocolManager.serialize(pd, buf, curr_offset, len);
         if (!(packet_size > 0)) throw new AssertionError();
+        Log.d(tag, "serialized packet size " + packet_size);
 
         sent_bytes = ProtocolManager.send_packet(packet_size);
         if (sent_bytes < 0) throw new AssertionError();
+        Log.d(tag, "Sent bytes: " + sent_bytes);
 
         return sent_bytes;
     }
@@ -85,6 +88,7 @@ class ProtocolManager {
         buffer.putShort(pd.id);
         byte[] net_id = buffer.array();
 
+        buffer = ByteBuffer.allocate(4);
         buffer.putInt(pd.len);
         byte[] net_len = buffer.array();
 
@@ -105,7 +109,7 @@ class ProtocolManager {
     }
 
     static public int serialize(ProtocolData pd, byte[] buf, int offset, int payload_size) {
-        if (serialized_vector != null) throw new AssertionError();
+        //if (serialized_vector != null) throw new AssertionError();
 
         int vec_size;
         int data_offset;
@@ -166,6 +170,10 @@ class ProtocolManager {
     private static String tag = "protocol manager";
 }
 
+/*
+    Segment is the minimum unit of the sending data through the network.
+    Segment header (sequence # + flag_len) is 8bytes (4bytes + 4bytes)
+ */
 class Segment {
     int seq_no;
     int flag_len;
@@ -253,6 +261,8 @@ class SegmentManager {
         }
 
         free_list = new LinkedList<Segment>();
+        seq_no = 0;
+        queue_threshold = 0;
     }
 
 
@@ -274,12 +284,11 @@ class SegmentManager {
         if (data == null || len <= 0) throw new AssertionError();
 
         int offset = 0;
-        int num_of_segments = (short) ((len + kSegSize - 1) / kSegSize);
-
+        int num_of_segments = (int)((len + kSegSize - 1) / kSegSize);
         int allocated_seq_no = get_seq_no(num_of_segments);
         int seg_idx;
         for (seg_idx = 0; seg_idx < num_of_segments; seg_idx++) {
-            short seg_len = (len - offset < kSegSize)? (short)(len - offset) : kSegSize;
+            int seg_len = (len - offset < kSegSize)? (len - offset) : kSegSize;
             Segment seg = get_free_segment();
 
             seg.flag_len = mSetSegLenBits(seg_len, seg.flag_len);
@@ -299,16 +308,16 @@ class SegmentManager {
     }
 
     private void serialize_segment_header(Segment seg) {
-        ByteBuffer buffer = ByteBuffer.allocate(2);
-
+        ByteBuffer buffer = ByteBuffer.allocate(4);
         buffer.putInt(seg.seq_no);
         byte[] net_seq_no = buffer.array();
 
+        buffer = ByteBuffer.allocate(4);
         buffer.putInt(seg.flag_len);
         byte[] net_flag_len = buffer.array();
 
-        System.arraycopy(net_seq_no, 0, seg.data, 0, 2);
-        System.arraycopy(net_flag_len, 0, seg.data, 2, 2);
+        System.arraycopy(net_seq_no, 0, seg.data, 0, 4);
+        System.arraycopy(net_flag_len, 0, seg.data, 4, 4);
     }
 
     public byte[] recv_from_segment_manager(ProtocolData pd) {

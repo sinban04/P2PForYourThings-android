@@ -57,14 +57,14 @@ public class MainActivity extends AppCompatActivity {
             private String tag = "Recved";
             public void run() {
                 // byte[] buf = new byte[8192];
-                byte[] buf = new byte[100*1024];
-                String sending_buf = "hihihii";
+                byte[] buf = new byte[100*1024*1024];
+                String sending_buf = "hihihii123213114adskfjklfsaj;fklsjflkejwakfjwkljaewlajwlkj12";
 
                 while (true) {
-                    int res = cm.recv_data(buf, 100*1024);
+                    int res = cm.recv_data(buf, 100*1024*1024);
                     Log.d(tag, Integer.toString(res) + "data received");
-                    //int res2 = cm.send_data(sending_buf.getBytes(), 5);
-                    //Log.d(tag, Integer.toString(res2) + "data sent");
+                    int res2 = cm.send_data(sending_buf.getBytes(), 60);
+                    Log.d(tag, "data sent");
                 }
 
             }
