@@ -137,7 +137,7 @@ public class WFDClientAdapter extends NetworkAdapter {
         try {
             if (!connected_notified) {
                 synchronized (connected_trigger) {
-                    connected_trigger.wait(10000);
+                    connected_trigger.wait(15000);
                 }
             }
 

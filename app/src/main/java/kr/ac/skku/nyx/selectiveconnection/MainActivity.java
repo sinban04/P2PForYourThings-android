@@ -43,12 +43,14 @@ public class MainActivity extends AppCompatActivity {
         na31 = new BTClientAdapter((short)3334, "B8:27:EB:37:0C:BD", "6be60100-3629-11e7-a919-92ebcb67fe33");
         na32 = new BTClientAdapter((short)3335, "B8:27:EB:37:0C:BD", "6be60470-3629-11e7-a919-92ebcb67fe33");
 
-        ca.set_control_adapter();
+        //ca.set_control_adapter();
+        na.set_control_adapter();
+
         na3.set_data_adapter();
         //na31.set_data_adapter();
         //na32.set_data_adapter();
 
-        na.set_data_adapter();
+        //na.set_data_adapter();
         //na4.set_data_adapter();
         //na5.set_data_adapter();
         na2.set_data_adapter();
@@ -63,8 +65,8 @@ public class MainActivity extends AppCompatActivity {
                 while (true) {
                     int res = cm.recv_data(buf, 100*1024*1024);
                     Log.d(tag, Integer.toString(res) + "data received");
-                    int res2 = cm.send_data(sending_buf.getBytes(), 60);
-                    Log.d(tag, "data sent");
+                    //int res2 = cm.send_data(sending_buf.getBytes(), 60);
+                    //Log.d(tag, "data sent");
                 }
 
             }
