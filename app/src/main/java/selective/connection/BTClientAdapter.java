@@ -31,6 +31,7 @@ public class BTClientAdapter extends NetworkAdapter {
         btSocket = null;
         writer = null;
         reader = null;
+        this.dev_type = kBluetooth;
     }
     @Override
     public boolean device_on() {

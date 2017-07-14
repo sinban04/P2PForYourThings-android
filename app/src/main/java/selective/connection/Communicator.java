@@ -41,11 +41,11 @@ public class Communicator {
 
         packet_size = ProtocolManager.serialize(pd, buf, curr_offset, len);
         if (!(packet_size > 0)) throw new AssertionError();
-        Log.d(tag, "serialized packet size " + packet_size);
+        //Log.d(tag, "serialized packet size " + packet_size);
 
         sent_bytes = ProtocolManager.send_packet(packet_size);
         if (sent_bytes < 0) throw new AssertionError();
-        Log.d(tag, "Sent bytes: " + sent_bytes);
+        //Log.d(tag, "Sent bytes: " + sent_bytes);
 
         return sent_bytes;
     }
@@ -221,6 +221,8 @@ class SegmentManager {
     private LinkedList<Segment> free_list;
     private int free_list_size;
 
+    public int wfd_state = 0;
+
     // Macro
     static public int mGetSegLenBits(int x) {
         return (x & kSegLenMask) >> kSegLenOffset;
@@ -332,7 +334,7 @@ class SegmentManager {
         ProtocolManager.parse_header(Arrays.copyOfRange(seg.data, kSegHeaderSize, seg.data.length), pd);
         if (pd.len == 0) return null;
 
-        Log.d(tag, "pd.len is " + pd.len);
+        //Log.d(tag, "pd.len is " + pd.len);
         serialized = new byte[pd.len];
 
         // Handle the first segment of the data bulk, because it contains protocol data
@@ -406,11 +408,13 @@ class SegmentManager {
         }
 
         if (type == kSegSend) {
+            /*
             if (queue_size[type] > queue_threshold) {
                 NetworkManager.get_instance().increase_adapter();
             } else if (queue_size[type] == 0) {
                 NetworkManager.get_instance().decrease_adapter();
             }
+            */
         }
     }
 

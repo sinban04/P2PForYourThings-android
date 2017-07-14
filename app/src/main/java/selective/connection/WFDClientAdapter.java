@@ -53,6 +53,7 @@ public class WFDClientAdapter extends NetworkAdapter {
     private final IntentFilter intentFilter = new IntentFilter();
 
     private WifiDirectBroadcastReceiver bReceiver;
+    private Activity givenCt;
 
     public WFDClientAdapter(short dev_id, int port, Activity ct) {
         this.dev_id = dev_id;
@@ -74,6 +75,8 @@ public class WFDClientAdapter extends NetworkAdapter {
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
         ct.registerReceiver(bReceiver, intentFilter);
+        givenCt = ct;
+        this.dev_type = kWifiDirect;
     }
 
     public void onResume(Context ct) {
@@ -133,7 +136,7 @@ public class WFDClientAdapter extends NetworkAdapter {
                 Log.d(tag, "Discover peers failed");
             }
         });
-        Log.d(tag, "hi1 " );
+
         try {
             if (!connected_notified) {
                 synchronized (connected_trigger) {
@@ -155,7 +158,6 @@ public class WFDClientAdapter extends NetworkAdapter {
 
         if (!res) return res;
 
-        Log.d(tag, "hi2 " );
         send_ctrl_msg(new String("Connected").getBytes(), 9);
 
         try {
@@ -174,7 +176,6 @@ public class WFDClientAdapter extends NetworkAdapter {
 
         if (!res) return res;
 
-        Log.d(tag, "hi3 " );
         try {
             if (sock != null)
                 sock.close();
@@ -202,6 +203,7 @@ public class WFDClientAdapter extends NetworkAdapter {
 
     @Override
     public boolean close_connection() {
+        ;
         boolean res = false;
         try {
             sock.close();
@@ -212,6 +214,7 @@ public class WFDClientAdapter extends NetworkAdapter {
             sock = null;
             dev_addr = null;
             wps_pin = null;
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -234,7 +237,8 @@ public class WFDClientAdapter extends NetworkAdapter {
             e.printStackTrace();
             res = -1;
         }
-        return res;    }
+        return res;
+    }
 
     @Override
     public int recv(byte[] buf, int len) {

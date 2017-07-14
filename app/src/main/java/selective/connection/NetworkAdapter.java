@@ -28,6 +28,15 @@ public abstract class NetworkAdapter {
     static public final int kATCtrlable = 2;
     static public final int kATCtrl = 4;
 
+    static public final int kBluetooth = 1;
+    static public final int kWifi = 2;
+    static public final int kWifiDirect = 3;
+
+    private int sender_semaphore = 0;
+    private int recver_semaphore = 0;
+    private Object sender_lock;
+    private Object recver_lock;
+
     public abstract boolean device_on();
     public abstract boolean device_off();
     public abstract boolean make_connection();
@@ -40,8 +49,36 @@ public abstract class NetworkAdapter {
     private class SenderThread extends Thread {
         public void run() {
             SegmentManager sm = SegmentManager.get_instance();
+            if(dev_type == kWifiDirect){
+                sm.wfd_state = 1;
+            }
+
+            if(dev_type == kBluetooth){
+                Log.d(tag, "start bluetooth sender thread");
+            } else if(dev_type == kWifiDirect){
+                Log.d(tag, "start WiFi direct sender thread");
+            }
 
             while (true) {
+                if(dev_type == kBluetooth){
+                    while(sm.wfd_state == 1){
+                        try {
+                            Log.d(tag, "WFD is on. stop bluetooth sender thread");
+                            sleep(1000);
+                        } catch (Exception e){
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+                if(sender_semaphore == 1){
+                    Log.d(tag, "sender semaphore is 1. stop sender thread");
+                    if(dev_type == kWifiDirect){
+                        sm.wfd_state = 0;
+                    }
+                    break;
+                }
+
                 Segment to_send = sm.dequeue(kSegSend);
                 if(to_send != null){
                     int len = kSegSize + kSegHeaderSize;
@@ -55,6 +92,9 @@ public abstract class NetworkAdapter {
                     sm.free_segment(to_send);
                 }
             }
+            synchronized(sender_lock) {
+                sender_lock.notify();
+            }
         }
     }
 
@@ -63,7 +103,31 @@ public abstract class NetworkAdapter {
             SegmentManager sm = SegmentManager.get_instance();
             Segment free_seg = sm.get_free_segment();
 
+            if(dev_type == kBluetooth){
+                Log.d(tag, "start bluetooth recver thread");
+            } else if(dev_type == kWifiDirect){
+                Log.d(tag, "start WiFi direct recver thread");
+            }
+
             while (true) {
+                /*
+                if(dev_type == kBluetooth){
+
+                    while(sm.wfd_state == 1){
+                        try {
+                            Log.d(tag, "WFD is on. stop bluetooth recver thread");
+                            sleep(1000);
+                        } catch (Exception e){
+                            e.printStackTrace();
+                        }
+                    }
+                }*/
+
+                if(recver_semaphore == 1){
+                    Log.d(tag, "recver semaphore is 1. stop the recver thread");
+                    break;
+                }
+
                 int len = kSegSize + kSegHeaderSize;
                 //Log.d(tag, "Recving thread start:"+Integer.toString(dev_id));
                 int res = recv(free_seg.data, len);
@@ -90,6 +154,14 @@ public abstract class NetworkAdapter {
 
                 sm.enqueue(kSegRecv, free_seg);
                 free_seg = sm.get_free_segment();
+            }
+            try {
+                sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            synchronized(recver_lock) {
+                recver_lock.notify();
             }
         }
     }
@@ -151,14 +223,33 @@ public abstract class NetworkAdapter {
                 return;
 
             if(send_thread != null){
+                sender_semaphore = 1;
+                try {
+                    synchronized(sender_lock) {
+                        sender_lock.wait();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 send_thread.interrupt();
                 send_thread = null;
                 Log.d(tag, "sender thread stopped ");
+                sender_semaphore = 0;
             }
             if(recv_thread != null){
+                recver_semaphore = 1;
+                try {
+                    synchronized(recver_lock) {
+                        recver_lock.wait();
+                    }
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
+
                 recv_thread.interrupt();
                 recv_thread = null;
                 Log.d(tag, "recver thread stopped ");
+                recver_semaphore = 0;
             }
 
             boolean res = close_connection();
@@ -177,6 +268,7 @@ public abstract class NetworkAdapter {
     private ConnectingThread connect_thread;
     private ClosingThread close_thread;
 
+    public int dev_type;
     public short dev_id = 0;
     public int stat;
     private int at;
@@ -190,6 +282,10 @@ public abstract class NetworkAdapter {
         recv_thread = null;
         connect_thread = null;
         close_thread = null;
+
+        sender_lock = new Object();
+        recver_lock = new Object();
+        dev_type = 0;
     }
 
     public final void set_controllable() {
@@ -247,6 +343,7 @@ public abstract class NetworkAdapter {
             return;
         }
 
+        Log.d(tag, "close adapter");
         stat = kDevDisconnecting;
         if (close_thread != null) {
             close_thread.interrupt();
